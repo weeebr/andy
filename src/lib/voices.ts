@@ -12,28 +12,14 @@ export const AVAILABLE_VOICES: VoiceModel[] = [
     id: "de-female-premium",
     name: "Anna (Weiblich)",
     language: "de",
-    voicePattern: [
-      "Anna",
-      "Petra",
-      "Marlene",
-      "Vicki",
-      "de-DE-Neural",
-      "de-DE-Wavenet",
-    ],
+    voicePattern: ["Anna"],
     gender: "female",
   },
   {
     id: "de-male-premium",
     name: "Stefan (Männlich)",
     language: "de",
-    voicePattern: [
-      "Stefan",
-      "Hans",
-      "Ralf",
-      "de-DE-Neural",
-      "de-DE-Wavenet",
-      "German",
-    ],
+    voicePattern: ["Stefan"],
     gender: "male",
   },
   // English voices - High quality system voices
@@ -41,29 +27,14 @@ export const AVAILABLE_VOICES: VoiceModel[] = [
     id: "en-female-premium",
     name: "Samantha (Female)",
     language: "en",
-    voicePattern: [
-      "Samantha",
-      "Victoria",
-      "Allison",
-      "en-US-Neural",
-      "en-US-Wavenet",
-      "Microsoft Zira",
-    ],
+    voicePattern: ["Samantha"],
     gender: "female",
   },
   {
     id: "en-male-premium",
     name: "Alex (Male)",
     language: "en",
-    voicePattern: [
-      "Alex (English",
-      "Alex",
-      "Daniel",
-      "Fred",
-      "en-US-Neural",
-      "en-US-Wavenet",
-      "Microsoft David",
-    ],
+    voicePattern: ["Alex"],
     gender: "male",
   },
 ];
@@ -86,7 +57,10 @@ function findBestVoice(voiceModel: VoiceModel): SpeechSynthesisVoice | null {
   );
 
   // Debug: List all available voices for this language
-  console.log(`🔍 Available ${voiceModel.language} voices:`, languageVoices.map(v => `${v.name} (${v.lang})`));
+  console.log(
+    `🔍 Available ${voiceModel.language} voices:`,
+    languageVoices.map((v) => `${v.name} (${v.lang})`)
+  );
 
   // Try to find voices matching our patterns (in priority order)
   for (const pattern of voiceModel.voicePattern) {
@@ -137,8 +111,7 @@ function findBestVoice(voiceModel: VoiceModel): SpeechSynthesisVoice | null {
 export async function synthesize(
   text: string,
   language: "de" | "en",
-  selectedVoices: { de: string; en: string },
-  _shouldPlay: boolean = false
+  selectedVoices: { de: string; en: string }
 ): Promise<Float32Array> {
   const selectedVoiceId = selectedVoices[language];
   console.log(
@@ -160,13 +133,17 @@ export async function synthesize(
   // Wait for voices to be loaded
   if (speechSynthesis.getVoices().length === 0) {
     await new Promise<void>((resolve) => {
-      speechSynthesis.addEventListener("voiceschanged", () => {
-        // Clear cache when voices change
-        voiceCache.clear();
-        resolve();
-      }, {
-        once: true,
-      });
+      speechSynthesis.addEventListener(
+        "voiceschanged",
+        () => {
+          // Clear cache when voices change
+          voiceCache.clear();
+          resolve();
+        },
+        {
+          once: true,
+        }
+      );
       // Fallback timeout
       setTimeout(() => resolve(), 1000);
     });
