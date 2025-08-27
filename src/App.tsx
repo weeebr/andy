@@ -17,6 +17,9 @@ function App() {
   const [playMode, setPlayMode] = useState<"download" | "play">("play");
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasRestoredWords, setHasRestoredWords] = useState(false);
+  const [languageOverride, setLanguageOverride] = useState<
+    "none" | "de" | "en"
+  >("none");
 
   useEffect(() => {
     const saved = localStorage.getItem("polyspeak-session");
@@ -76,6 +79,7 @@ function App() {
 
         setSpeed(data.speed || 1.0);
         setPlayMode(data.playMode || "play");
+        setLanguageOverride(data.languageOverride || "none");
       } catch (error) {
         console.error("Failed to load saved session:", error);
       }
@@ -135,11 +139,20 @@ function App() {
       selectedVoices,
       speed,
       playMode,
+      languageOverride,
     };
 
     console.log("💾 Saving to localStorage:", sessionData);
     localStorage.setItem("polyspeak-session", JSON.stringify(sessionData));
-  }, [inputText, detectedWords, selectedVoices, speed, playMode, isLoaded]);
+  }, [
+    inputText,
+    detectedWords,
+    selectedVoices,
+    speed,
+    playMode,
+    languageOverride,
+    isLoaded,
+  ]);
 
   const handleTextChange = (text: string) => {
     setInputText(text);
@@ -162,24 +175,40 @@ function App() {
 
     setIsGenerating(true);
     try {
-      const sentences = groupWordsBySentence(detectedWords);
+      // Handle language override mode
+      if (languageOverride !== "none") {
+        const fullText = detectedWords
+          .map((w) => w.text)
+          .join("")
+          .trim();
 
-      if (sentences.length === 0) {
-        alert("Keine Wörter zum Synthetisieren!");
-        return;
-      }
+        if (fullText.length === 0) {
+          alert("Kein Text zum Synthetisieren!");
+          return;
+        }
 
-      console.log("Grouped sentences:", sentences);
-      console.log("🎵 Play mode:", playMode);
-
-      // Use high-quality Web Speech API for natural voice synthesis
-      setIsGenerating(false);
-
-      for (const sentence of sentences) {
         console.log(
-          `🎯 Playing sentence: "${sentence.text}" in ${sentence.language}`
+          `🎯 Language override: speaking entire text in ${languageOverride}`
         );
-        await synthesize(sentence.text, sentence.language, selectedVoices);
+        await synthesize(fullText, languageOverride, selectedVoices);
+      } else {
+        // Normal word-by-word detection mode
+        const sentences = groupWordsBySentence(detectedWords);
+
+        if (sentences.length === 0) {
+          alert("Keine Wörter zum Synthetisieren!");
+          return;
+        }
+
+        console.log("Grouped sentences:", sentences);
+        console.log("🎵 Play mode:", playMode);
+
+        for (const sentence of sentences) {
+          console.log(
+            `🎯 Playing sentence: "${sentence.text}" in ${sentence.language}`
+          );
+          await synthesize(sentence.text, sentence.language, selectedVoices);
+        }
       }
     } catch (error) {
       console.error("Generation failed:", error);
@@ -218,23 +247,29 @@ function App() {
           {detectedWords.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                🔍 Spracherkennung (Wörter zum Korrigieren anklicken):
+                {languageOverride === "none"
+                  ? "🔍 Spracherkennung (Wörter zum Korrigieren anklicken):"
+                  : `🌐 Sprach-Override aktiv: ${
+                      languageOverride === "de" ? "🇩🇪 Deutsch" : "🇺🇸 English"
+                    } (Wort-Erkennung ignoriert)`}
               </label>
 
-              {/* Legend positioned relative to voice detection box */}
-              <div className="fixed top-70 right-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-sm z-10">
-                <div className="flex items-center gap-1">
-                  <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded text-xs">
-                    English
-                  </span>
-                  <span className="bg-red-200 text-red-900 px-2 py-1 rounded text-xs">
-                    Deutsch
-                  </span>
-                  <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs border-b border-dashed border-gray-400">
-                    Wort nicht aussprechen
-                  </span>
+              {/* Legend positioned relative to voice detection box - only show in auto-detect mode */}
+              {languageOverride === "none" && (
+                <div className="fixed top-70 right-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-sm z-10">
+                  <div className="flex items-center gap-1">
+                    <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded text-xs">
+                      English
+                    </span>
+                    <span className="bg-red-200 text-red-900 px-2 py-1 rounded text-xs">
+                      Deutsch
+                    </span>
+                    <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs border-b border-dashed border-gray-400">
+                      Wort nicht aussprechen
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="p-4 border border-gray-200 rounded-lg bg-white min-h-[120px] whitespace-pre-wrap">
                 {detectedWords.map((word, index) => {
@@ -249,15 +284,25 @@ function App() {
                   return (
                     <span
                       key={index}
-                      className={`inline-block m-0.5 px-1 py-0.5 rounded cursor-pointer transition-colors ${
-                        word.language === "de"
-                          ? "bg-red-200 hover:bg-red-300 text-red-900"
-                          : word.language === "en"
-                          ? "bg-blue-200 hover:bg-blue-300 text-blue-900"
-                          : "bg-gray-200 hover:bg-gray-300 border-b border-dashed border-gray-400"
+                      className={`inline-block m-0.5 px-1 py-0.5 rounded transition-colors ${
+                        languageOverride !== "none"
+                          ? "bg-gray-100 text-gray-500" // Grayed out in override mode
+                          : `cursor-pointer ${
+                              word.language === "de"
+                                ? "bg-red-200 hover:bg-red-300 text-red-900"
+                                : word.language === "en"
+                                ? "bg-blue-200 hover:bg-blue-300 text-blue-900"
+                                : "bg-gray-200 hover:bg-gray-300 border-b border-dashed border-gray-400"
+                            }`
                       }`}
-                      onClick={() => handleWordToggle(index)}
-                      title={`Click to toggle language (currently: ${word.language})`}
+                      onClick={() =>
+                        languageOverride === "none" && handleWordToggle(index)
+                      }
+                      title={
+                        languageOverride !== "none"
+                          ? "Language override is active - word detection ignored"
+                          : `Click to toggle language (currently: ${word.language})`
+                      }
                     >
                       {word.text}
                     </span>
@@ -334,6 +379,47 @@ function App() {
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               title="Adjust speech speed"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              🌐 Sprach-Modus:
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setLanguageOverride("none")}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  languageOverride === "none"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+                title="Use word-by-word language detection"
+              >
+                🔍 Wie ausgewählt
+              </button>
+              <button
+                onClick={() => setLanguageOverride("de")}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  languageOverride === "de"
+                    ? "bg-red-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+                title="Force entire text to German"
+              >
+                🇩🇪 Nur Deutsch
+              </button>
+              <button
+                onClick={() => setLanguageOverride("en")}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  languageOverride === "en"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+                title="Force entire text to English"
+              >
+                🇺🇸 Nur English
+              </button>
+            </div>
           </div>
 
           <div className="flex justify-center">
