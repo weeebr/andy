@@ -56,6 +56,7 @@ export const AVAILABLE_VOICES: VoiceModel[] = [
     name: "Alex (Male)",
     language: "en",
     voicePattern: [
+      "Alex (English",
       "Alex",
       "Daniel",
       "Fred",
@@ -84,6 +85,9 @@ function findBestVoice(voiceModel: VoiceModel): SpeechSynthesisVoice | null {
     v.lang.startsWith(voiceModel.language === "de" ? "de" : "en")
   );
 
+  // Debug: List all available voices for this language
+  console.log(`🔍 Available ${voiceModel.language} voices:`, languageVoices.map(v => `${v.name} (${v.lang})`));
+
   // Try to find voices matching our patterns (in priority order)
   for (const pattern of voiceModel.voicePattern) {
     bestVoice =
@@ -91,7 +95,10 @@ function findBestVoice(voiceModel: VoiceModel): SpeechSynthesisVoice | null {
         (v) => v.name.includes(pattern) || v.voiceURI.includes(pattern)
       ) || null;
 
-    if (bestVoice) break;
+    if (bestVoice) {
+      console.log(`🎯 Found voice for pattern "${pattern}": ${bestVoice.name}`);
+      break;
+    }
   }
 
   // Fallback: find best quality voice by looking for quality indicators
@@ -129,7 +136,7 @@ function findBestVoice(voiceModel: VoiceModel): SpeechSynthesisVoice | null {
 
 export async function synthesize(
   text: string,
-  language: "de" | "en", 
+  language: "de" | "en",
   selectedVoices: { de: string; en: string },
   _shouldPlay: boolean = false
 ): Promise<Float32Array> {
@@ -153,7 +160,11 @@ export async function synthesize(
   // Wait for voices to be loaded
   if (speechSynthesis.getVoices().length === 0) {
     await new Promise<void>((resolve) => {
-      speechSynthesis.addEventListener("voiceschanged", () => resolve(), {
+      speechSynthesis.addEventListener("voiceschanged", () => {
+        // Clear cache when voices change
+        voiceCache.clear();
+        resolve();
+      }, {
         once: true,
       });
       // Fallback timeout

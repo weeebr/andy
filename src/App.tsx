@@ -1,9 +1,9 @@
 import { AVAILABLE_VOICES, synthesize } from "./lib/voices";
 import { detectWordLanguages, toggleWordLanguage } from "./lib/detect";
-import { groupWordsBySentence } from "./lib/synth";
 import { useEffect, useState } from "react";
 
 import type { DetectedWord } from "./lib/detect";
+import { groupWordsBySentence } from "./lib/synth";
 
 function App() {
   const [inputText, setInputText] = useState("");
@@ -46,7 +46,9 @@ function App() {
           loadedText
         ) {
           // Verify the detected words still match the current text
-          const savedText = data.detectedWords.map((w: DetectedWord) => w.text).join("");
+          const savedText = data.detectedWords
+            .map((w: DetectedWord) => w.text)
+            .join("");
           if (savedText === loadedText) {
             console.log("✅ Restoring saved word language assignments");
             setDetectedWords(data.detectedWords);
