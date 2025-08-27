@@ -191,6 +191,21 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      {/* Fixed position legend */}
+      <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm z-10">
+        <div className="flex items-center gap-2">
+          <span className="bg-red-200 text-red-900 px-2 py-1 rounded text-xs">
+            Deutsch
+          </span>
+          <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded text-xs">
+            English
+          </span>
+          <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs border-b border-dashed border-gray-400">
+            Unknown
+          </span>
+        </div>
+      </div>
+
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -248,9 +263,7 @@ function App() {
                   );
                 })}
               </div>
-              <div className="mt-2 text-sm text-gray-500">
-                🇩🇪 <span className="bg-red-200 text-red-900 px-2 py-1 rounded">Deutsch</span> • 🇺🇸 <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded">English</span> • ⚪ <u>(zum Festlegen anklicken)</u>
-              </div>
+
             </div>
           )}
 
