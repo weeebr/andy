@@ -231,7 +231,7 @@ function App() {
                     English
                   </span>
                   <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs border-b border-dashed border-gray-400">
-                    Unknown
+                    Wort nicht aussprechen
                   </span>
                 </div>
               </div>
