@@ -80,8 +80,7 @@ export function groupWordsBySentence(words: DetectedWord[]): SentenceGroup[] {
 
 export async function synthesizeSentences(
   sentences: SentenceGroup[],
-  options: SynthesisOptions,
-  shouldPlay: boolean = false
+  options: SynthesisOptions
 ): Promise<Float32Array[]> {
   const audioChunks: Float32Array[] = [];
 
@@ -92,8 +91,7 @@ export async function synthesizeSentences(
       const audioData = await synthesize(
         sentence.text,
         sentence.language,
-        options.selectedVoices,
-        shouldPlay
+        options.selectedVoices
       );
 
       audioChunks.push(audioData);

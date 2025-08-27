@@ -179,12 +179,7 @@ function App() {
         console.log(
           `🎯 Playing sentence: "${sentence.text}" in ${sentence.language}`
         );
-        await synthesize(
-          sentence.text,
-          sentence.language,
-          selectedVoices,
-          true // Always play for immediate high-quality feedback
-        );
+        await synthesize(sentence.text, sentence.language, selectedVoices);
       }
     } catch (error) {
       console.error("Generation failed:", error);
