@@ -203,26 +203,10 @@ function App() {
         </header>
 
         <div className="space-y-6">
-          <div className="relative">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               📝 Fügen Sie Ihren gemischten DE/EN Text ein:
             </label>
-            
-            {/* Legend positioned relative to text area */}
-            <div className="absolute top-8 right-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-sm z-10">
-              <div className="flex items-center gap-1">
-                <span className="bg-red-200 text-red-900 px-2 py-1 rounded text-xs">
-                  Deutsch
-                </span>
-                <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded text-xs">
-                  English
-                </span>
-                <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs border-b border-dashed border-gray-400">
-                  Unknown
-                </span>
-              </div>
-            </div>
-
             <textarea
               className="w-full h-40 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Geben Sie hier Ihren gemischten deutschen und englischen Text ein..."
@@ -236,6 +220,22 @@ function App() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 🔍 Spracherkennung (Wörter zum Korrigieren anklicken):
               </label>
+
+              {/* Legend positioned relative to voice detection box */}
+              <div className="fixed top-70 right-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-sm z-10">
+                <div className="flex items-center gap-1">
+                  <span className="bg-red-200 text-red-900 px-2 py-1 rounded text-xs">
+                    Deutsch
+                  </span>
+                  <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded text-xs">
+                    English
+                  </span>
+                  <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs border-b border-dashed border-gray-400">
+                    Unknown
+                  </span>
+                </div>
+              </div>
+
               <div className="p-4 border border-gray-200 rounded-lg bg-white min-h-[120px] whitespace-pre-wrap">
                 {detectedWords.map((word, index) => {
                   if (word.text === "\n") {
@@ -270,32 +270,6 @@ function App() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                🇩🇪 Deutsche Stimme:
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                value={selectedVoices.de}
-                onChange={(e) => {
-                  console.log(`🇩🇪 German voice changed to: ${e.target.value}`);
-                  setSelectedVoices((prev) => ({
-                    ...prev,
-                    de: e.target.value,
-                  }));
-                }}
-                title="Select German voice"
-              >
-                {AVAILABLE_VOICES.filter((v) => v.language === "de").map(
-                  (voice) => (
-                    <option key={voice.id} value={voice.id}>
-                      {voice.name}
-                    </option>
-                  )
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
                 🇺🇸 Englische Stimme:
               </label>
               <select
@@ -319,6 +293,31 @@ function App() {
                 )}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                🇩🇪 Deutsche Stimme:
+              </label>
+              <select
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={selectedVoices.de}
+                onChange={(e) => {
+                  console.log(`🇩🇪 German voice changed to: ${e.target.value}`);
+                  setSelectedVoices((prev) => ({
+                    ...prev,
+                    de: e.target.value,
+                  }));
+                }}
+                title="Select German voice"
+              >
+                {AVAILABLE_VOICES.filter((v) => v.language === "de").map(
+                  (voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.name}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>{" "}
           </div>
 
           <div>
