@@ -235,9 +235,9 @@ function App() {
                       key={index}
                       className={`inline-block m-0.5 px-1 py-0.5 rounded cursor-pointer transition-colors ${
                         word.language === "de"
-                          ? "bg-yellow-200 hover:bg-yellow-300"
+                          ? "bg-red-200 hover:bg-red-300 text-red-900"
                           : word.language === "en"
-                          ? "bg-blue-200 hover:bg-blue-300"
+                          ? "bg-blue-200 hover:bg-blue-300 text-blue-900"
                           : "bg-gray-200 hover:bg-gray-300 border-b border-dashed border-gray-400"
                       }`}
                       onClick={() => handleWordToggle(index)}
@@ -249,7 +249,7 @@ function App() {
                 })}
               </div>
               <div className="mt-2 text-sm text-gray-500">
-                🟡 Deutsch • 🔵 Englisch • ⚪ <u>(zum Festlegen anklicken)</u>
+                🇩🇪 <span className="bg-red-200 text-red-900 px-2 py-1 rounded">Deutsch</span> • 🇺🇸 <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded">English</span> • ⚪ <u>(zum Festlegen anklicken)</u>
               </div>
             </div>
           )}
