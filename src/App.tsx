@@ -114,7 +114,7 @@ function App() {
           "🔄 Auto-detecting words for text:",
           inputText.substring(0, 50) + "..."
         );
-        const words = detectWordLanguages(inputText);
+        const words = detectWordLanguages(inputText, detectedWords);
         console.log("✅ Auto-detection returned:", words.length, "words");
         setDetectedWords(words);
       } else {
@@ -198,7 +198,7 @@ function App() {
           </h1>
           <p className="text-gray-600">
             Gemischter deutscher/englischer Text einfügen → Wörter sprechen und
-            Entspannen
+            entspannen
           </p>
         </header>
 
@@ -224,11 +224,11 @@ function App() {
               {/* Legend positioned relative to voice detection box */}
               <div className="fixed top-70 right-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-sm z-10">
                 <div className="flex items-center gap-1">
-                  <span className="bg-red-200 text-red-900 px-2 py-1 rounded text-xs">
-                    Deutsch
-                  </span>
                   <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded text-xs">
                     English
+                  </span>
+                  <span className="bg-red-200 text-red-900 px-2 py-1 rounded text-xs">
+                    Deutsch
                   </span>
                   <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs border-b border-dashed border-gray-400">
                     Wort nicht aussprechen
