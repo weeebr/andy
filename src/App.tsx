@@ -544,7 +544,7 @@ function App() {
             </div>
           )}
 
-Don't make the words that I'm trying to select selectable, instead the text          <div className="flex justify-center">
+          <div className="flex justify-center">
             <button
               onClick={handleGenerate}
               disabled={detectedWords.length === 0 || isGenerating}
