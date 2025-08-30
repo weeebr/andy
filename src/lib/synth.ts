@@ -91,7 +91,8 @@ export async function synthesizeSentences(
       const audioData = await synthesize(
         sentence.text,
         sentence.language,
-        options.selectedVoices
+        options.selectedVoices,
+        options.speed
       );
 
       audioChunks.push(audioData);

@@ -204,6 +204,7 @@ function App() {
             fullText, 
             languageOverride, 
             selectedVoices,
+            speed,
             {
               chunkSize: 200,
               streamingMode,
@@ -220,7 +221,7 @@ function App() {
           // In a real implementation, you'd concatenate and play as one audio file
         } else {
           console.log("📝 Using direct synthesis for small text");
-          await synthesize(fullText, languageOverride, selectedVoices);
+          await synthesize(fullText, languageOverride, selectedVoices, speed);
         }
       } else {
         // Normal word-by-word detection mode
@@ -268,6 +269,7 @@ function App() {
               sentence.text, 
               sentence.language, 
               selectedVoices,
+              speed,
               {
                 chunkSize: 200,
                 streamingMode,
@@ -285,7 +287,7 @@ function App() {
             );
           } else {
             console.log("📝 Using direct synthesis for short sentence");
-            await synthesize(sentence.text, sentence.language, selectedVoices, transitionDelay);
+            await synthesize(sentence.text, sentence.language, selectedVoices, speed, transitionDelay);
           }
           
           previousLanguage = sentence.language;

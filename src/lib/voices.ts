@@ -128,6 +128,7 @@ export async function synthesize(
   text: string,
   language: "de" | "en",
   selectedVoices: { de: string; en: string },
+  speed: number = 1.0,
   delayAfterMs: number = 0
 ): Promise<Float32Array> {
   const selectedVoiceId = selectedVoices[language];
@@ -177,13 +178,13 @@ export async function synthesize(
     console.log(
       `🎙️ Synthesizing with voice: ${voiceModel.name}${
         selectedVoice ? ` (${selectedVoice.name})` : ""
-      }`
+      } at ${speed}x speed`
     );
     console.log(`🗣️ Text: "${text}"`);
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === "de" ? "de-DE" : "en-US";
-    utterance.rate = 1.0;
+    utterance.rate = speed; // Use the user's speed setting!
     utterance.pitch = 1.0;
     utterance.volume = 1.0; // Always audible - let the user hear the quality!
 
@@ -290,6 +291,7 @@ export async function synthesizeChunked(
   text: string,
   language: "de" | "en",
   selectedVoices: { de: string; en: string },
+  speed: number = 1.0,
   options: ChunkedSynthesisOptions = {}
 ): Promise<Float32Array[]> {
   const { 
@@ -324,7 +326,7 @@ export async function synthesizeChunked(
     try {
       // Add delay between chunks if specified (except for the first chunk)
       const delayMs = i > 0 ? languageTransitionDelay : 0;
-      const audioData = await synthesize(chunk, language, selectedVoices, delayMs);
+      const audioData = await synthesize(chunk, language, selectedVoices, speed, delayMs);
       
       if (streamingMode) {
         // In streaming mode, immediately process and potentially discard old chunks
