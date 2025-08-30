@@ -253,7 +253,7 @@ function App() {
           
           // Check if language changed and add delay
           const languageChanged = previousLanguage && previousLanguage !== sentence.language;
-          const transitionDelay = languageChanged ? 800 : 0; // 800ms delay for language transitions
+          const transitionDelay = languageChanged ? 600 : 0; // 600ms delay for language transitions
           
           if (languageChanged) {
             console.log(`🔄 Language transition: ${previousLanguage} → ${sentence.language}, adding ${transitionDelay}ms delay`);
