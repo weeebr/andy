@@ -21,6 +21,7 @@ function App() {
     "none" | "de" | "en"
   >("none");
   const [synthesisProgress, setSynthesisProgress] = useState<SynthesisProgress | null>(null);
+  const [currentLanguage, setCurrentLanguage] = useState<"de" | "en" | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("polyspeak-session");
@@ -176,6 +177,7 @@ function App() {
 
     setIsGenerating(true);
     setSynthesisProgress(null);
+    setCurrentLanguage(null);
     
     try {
       // Handle language override mode
@@ -237,6 +239,7 @@ function App() {
         // Always use smart processing for better performance
         const totalSentences = sentences.length;
         let processedSentences = 0;
+        let previousLanguage: "de" | "en" | null = null;
         
         for (const sentence of sentences) {
           setSynthesisProgress({
@@ -249,6 +252,15 @@ function App() {
           console.log(
             `🎯 Playing sentence ${processedSentences + 1}/${totalSentences}: "${sentence.text}" in ${sentence.language}`
           );
+          
+          // Check if language changed and add delay
+          const languageChanged = previousLanguage && previousLanguage !== sentence.language;
+          const transitionDelay = languageChanged ? 800 : 0; // 800ms delay for language transitions
+          
+          if (languageChanged) {
+            console.log(`🔄 Language transition: ${previousLanguage} → ${sentence.language}, adding ${transitionDelay}ms delay`);
+            setCurrentLanguage(sentence.language);
+          }
           
           if (sentence.text.length > 200) {
             // Use chunked synthesis for long sentences
@@ -263,6 +275,7 @@ function App() {
                 chunkSize: 200,
                 streamingMode,
                 maxMemoryChunks: streamingMode ? 5 : 20,
+                languageTransitionDelay: transitionDelay,
                 onProgress: (progress) => {
                   setSynthesisProgress({
                     currentChunk: processedSentences + 1,
@@ -275,9 +288,10 @@ function App() {
             );
           } else {
             console.log("📝 Using direct synthesis for short sentence");
-            await synthesize(sentence.text, sentence.language, selectedVoices);
+            await synthesize(sentence.text, sentence.language, selectedVoices, transitionDelay);
           }
           
+          previousLanguage = sentence.language;
           processedSentences++;
         }
         
@@ -363,15 +377,15 @@ function App() {
                   return (
                     <span
                       key={index}
-                      className={`inline-block m-0.5 px-1 py-0.5 rounded transition-colors ${
+                      className={`inline-block m-0.5 px-2 py-1 rounded-md transition-all duration-200 select-none ${
                         languageOverride !== "none"
-                          ? "bg-gray-100 text-gray-500" // Grayed out in override mode
-                          : `cursor-pointer ${
+                          ? "bg-gray-100 text-gray-500 cursor-default" // Grayed out in override mode
+                          : `cursor-pointer hover:scale-105 active:scale-95 ${
                               word.language === "de"
-                                ? "bg-red-200 hover:bg-red-300 text-red-900"
+                                ? "bg-red-200 hover:bg-red-300 text-red-900 shadow-sm hover:shadow-md"
                                 : word.language === "en"
-                                ? "bg-blue-200 hover:bg-blue-300 text-blue-900"
-                                : "bg-gray-200 hover:bg-gray-300 border-b border-dashed border-gray-400"
+                                ? "bg-blue-200 hover:bg-blue-300 text-blue-900 shadow-sm hover:shadow-md"
+                                : "bg-gray-200 hover:bg-gray-300 border-b border-dashed border-gray-400 shadow-sm hover:shadow-md"
                             }`
                       }`}
                       onClick={() =>
@@ -533,7 +547,7 @@ function App() {
             </div>
           )}
 
-          <div className="flex justify-center">
+Don't make the words that I'm trying to select selectable, instead the text          <div className="flex justify-center">
             <button
               onClick={handleGenerate}
               disabled={detectedWords.length === 0 || isGenerating}

@@ -121,12 +121,14 @@ export interface ChunkedSynthesisOptions {
   onChunkComplete?: (chunkIndex: number, audioData: Float32Array) => void;
   maxMemoryChunks?: number;
   streamingMode?: boolean;
+  languageTransitionDelay?: number;
 }
 
 export async function synthesize(
   text: string,
   language: "de" | "en",
-  selectedVoices: { de: string; en: string }
+  selectedVoices: { de: string; en: string },
+  delayAfterMs: number = 0
 ): Promise<Float32Array> {
   const selectedVoiceId = selectedVoices[language];
   console.log(
@@ -207,20 +209,39 @@ export async function synthesize(
         } characters in ${actualDuration.toFixed(2)}s`
       );
 
-      // Return a minimal buffer just for API compatibility
-      // The real value is the actual speech the user hears!
-      const sampleRate = 22050;
-      const bufferLength = Math.floor(
-        sampleRate * Math.max(0.5, actualDuration)
-      );
-      const audioData = new Float32Array(bufferLength);
+      // Add delay after synthesis if specified
+      if (delayAfterMs > 0) {
+        console.log(`⏱️ Adding ${delayAfterMs}ms delay after ${language} synthesis`);
+        setTimeout(() => {
+          const sampleRate = 22050;
+          const bufferLength = Math.floor(
+            sampleRate * Math.max(0.5, actualDuration)
+          );
+          const audioData = new Float32Array(bufferLength);
 
-      // Minimal noise for compatibility
-      for (let i = 0; i < bufferLength; i++) {
-        audioData[i] = 0.001 * (Math.random() - 0.5);
+          // Minimal noise for compatibility
+          for (let i = 0; i < bufferLength; i++) {
+            audioData[i] = 0.001 * (Math.random() - 0.5);
+          }
+
+          resolve(audioData);
+        }, delayAfterMs);
+      } else {
+        // Return a minimal buffer just for API compatibility
+        // The real value is the actual speech the user hears!
+        const sampleRate = 22050;
+        const bufferLength = Math.floor(
+          sampleRate * Math.max(0.5, actualDuration)
+        );
+        const audioData = new Float32Array(bufferLength);
+
+        // Minimal noise for compatibility
+        for (let i = 0; i < bufferLength; i++) {
+          audioData[i] = 0.001 * (Math.random() - 0.5);
+        }
+
+        resolve(audioData);
       }
-
-      resolve(audioData);
     };
 
     utterance.onerror = (event) => {
@@ -276,7 +297,8 @@ export async function synthesizeChunked(
     onProgress, 
     onChunkComplete, 
     maxMemoryChunks = 10,
-    streamingMode = false 
+    streamingMode = false,
+    languageTransitionDelay = 0
   } = options;
   
   console.log(`🎯 Starting chunked synthesis for ${text.length} characters`);
@@ -300,7 +322,9 @@ export async function synthesizeChunked(
     console.log(`🎵 Synthesizing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 50)}..."`);
     
     try {
-      const audioData = await synthesize(chunk, language, selectedVoices);
+      // Add delay between chunks if specified (except for the first chunk)
+      const delayMs = i > 0 ? languageTransitionDelay : 0;
+      const audioData = await synthesize(chunk, language, selectedVoices, delayMs);
       
       if (streamingMode) {
         // In streaming mode, immediately process and potentially discard old chunks
