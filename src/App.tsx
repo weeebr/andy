@@ -21,7 +21,6 @@ function App() {
     "none" | "de" | "en"
   >("none");
   const [synthesisProgress, setSynthesisProgress] = useState<SynthesisProgress | null>(null);
-  const [currentLanguage, setCurrentLanguage] = useState<"de" | "en" | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("polyspeak-session");
@@ -177,7 +176,6 @@ function App() {
 
     setIsGenerating(true);
     setSynthesisProgress(null);
-    setCurrentLanguage(null);
     
     try {
       // Handle language override mode
@@ -259,7 +257,6 @@ function App() {
           
           if (languageChanged) {
             console.log(`🔄 Language transition: ${previousLanguage} → ${sentence.language}, adding ${transitionDelay}ms delay`);
-            setCurrentLanguage(sentence.language);
           }
           
           if (sentence.text.length > 200) {
