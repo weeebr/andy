@@ -1,4 +1,4 @@
-import { AVAILABLE_VOICES, synthesize } from "./lib/voices";
+import { AVAILABLE_VOICES, synthesize, synthesizeChunked, shouldUseStreamingMode, type SynthesisProgress } from "./lib/voices";
 import { detectWordLanguages, toggleWordLanguage } from "./lib/detect";
 import { useEffect, useState } from "react";
 
@@ -20,6 +20,7 @@ function App() {
   const [languageOverride, setLanguageOverride] = useState<
     "none" | "de" | "en"
   >("none");
+  const [synthesisProgress, setSynthesisProgress] = useState<SynthesisProgress | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("polyspeak-session");
@@ -174,6 +175,8 @@ function App() {
     if (detectedWords.length === 0) return;
 
     setIsGenerating(true);
+    setSynthesisProgress(null);
+    
     try {
       // Handle language override mode
       if (languageOverride !== "none") {
@@ -190,7 +193,35 @@ function App() {
         console.log(
           `🎯 Language override: speaking entire text in ${languageOverride}`
         );
-        await synthesize(fullText, languageOverride, selectedVoices);
+        
+        // Always use smart chunking for better performance and reliability
+        if (fullText.length > 200) {
+          console.log("📦 Using smart chunked synthesis for large text");
+          const streamingMode = shouldUseStreamingMode(fullText.length, 200);
+          console.log(`💾 Streaming mode: ${streamingMode ? 'enabled' : 'disabled'}`);
+          
+          const audioChunks = await synthesizeChunked(
+            fullText, 
+            languageOverride, 
+            selectedVoices,
+            {
+              chunkSize: 200,
+              streamingMode,
+              maxMemoryChunks: streamingMode ? 5 : 20,
+              onProgress: setSynthesisProgress,
+              onChunkComplete: (index, audioData) => {
+                console.log(`✅ Chunk ${index + 1} completed with ${audioData.length} samples`);
+              }
+            }
+          );
+          
+          console.log(`🎉 Generated ${audioChunks.length} audio chunks`);
+          // For now, we just play them sequentially via Web Speech API
+          // In a real implementation, you'd concatenate and play as one audio file
+        } else {
+          console.log("📝 Using direct synthesis for small text");
+          await synthesize(fullText, languageOverride, selectedVoices);
+        }
       } else {
         // Normal word-by-word detection mode
         const sentences = groupWordsBySentence(detectedWords);
@@ -203,18 +234,66 @@ function App() {
         console.log("Grouped sentences:", sentences);
         console.log("🎵 Play mode:", playMode);
 
+        // Always use smart processing for better performance
+        const totalSentences = sentences.length;
+        let processedSentences = 0;
+        
         for (const sentence of sentences) {
+          setSynthesisProgress({
+            currentChunk: processedSentences + 1,
+            totalChunks: totalSentences,
+            currentText: sentence.text,
+            isComplete: false
+          });
+          
           console.log(
-            `🎯 Playing sentence: "${sentence.text}" in ${sentence.language}`
+            `🎯 Playing sentence ${processedSentences + 1}/${totalSentences}: "${sentence.text}" in ${sentence.language}`
           );
-          await synthesize(sentence.text, sentence.language, selectedVoices);
+          
+          if (sentence.text.length > 200) {
+            // Use chunked synthesis for long sentences
+            console.log("📦 Using chunked synthesis for long sentence");
+            const streamingMode = shouldUseStreamingMode(sentence.text.length, 200);
+            
+            await synthesizeChunked(
+              sentence.text, 
+              sentence.language, 
+              selectedVoices,
+              {
+                chunkSize: 200,
+                streamingMode,
+                maxMemoryChunks: streamingMode ? 5 : 20,
+                onProgress: (progress) => {
+                  setSynthesisProgress({
+                    currentChunk: processedSentences + 1,
+                    totalChunks: totalSentences,
+                    currentText: progress.currentText,
+                    isComplete: false
+                  });
+                }
+              }
+            );
+          } else {
+            console.log("📝 Using direct synthesis for short sentence");
+            await synthesize(sentence.text, sentence.language, selectedVoices);
+          }
+          
+          processedSentences++;
         }
+        
+        setSynthesisProgress({
+          currentChunk: totalSentences,
+          totalChunks: totalSentences,
+          currentText: '',
+          isComplete: true
+        });
       }
     } catch (error) {
       console.error("Generation failed:", error);
       alert("Audio-Generierung fehlgeschlagen. Bitte versuchen Sie es erneut.");
     } finally {
       setIsGenerating(false);
+      setSynthesisProgress(null);
     }
   };
 
@@ -421,6 +500,38 @@ function App() {
               </button>
             </div>
           </div>
+
+          {synthesisProgress && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-blue-900">
+                  🎵 Audio-Generierung
+                </h3>
+                <span className="text-sm text-blue-700">
+                  {synthesisProgress.currentChunk} / {synthesisProgress.totalChunks}
+                </span>
+              </div>
+              
+              <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(synthesisProgress.currentChunk / synthesisProgress.totalChunks) * 100}%` }}
+                />
+              </div>
+              
+              {synthesisProgress.currentText && (
+                <p className="text-sm text-blue-800 truncate">
+                  Aktuell: "{synthesisProgress.currentText}"
+                </p>
+              )}
+              
+              {synthesisProgress.isComplete && (
+                <p className="text-sm text-green-700 font-medium">
+                  ✅ Generierung abgeschlossen!
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-center">
             <button

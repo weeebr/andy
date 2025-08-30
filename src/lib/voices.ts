@@ -108,6 +108,21 @@ function findBestVoice(voiceModel: VoiceModel): SpeechSynthesisVoice | null {
   return bestVoice;
 }
 
+export interface SynthesisProgress {
+  currentChunk: number;
+  totalChunks: number;
+  currentText: string;
+  isComplete: boolean;
+}
+
+export interface ChunkedSynthesisOptions {
+  chunkSize?: number;
+  onProgress?: (progress: SynthesisProgress) => void;
+  onChunkComplete?: (chunkIndex: number, audioData: Float32Array) => void;
+  maxMemoryChunks?: number;
+  streamingMode?: boolean;
+}
+
 export async function synthesize(
   text: string,
   language: "de" | "en",
@@ -216,4 +231,152 @@ export async function synthesize(
     // Always play the speech - this is where the real value is!
     speechSynthesis.speak(utterance);
   });
+}
+
+export function smartChunkText(text: string, maxChunkSize: number = 200): string[] {
+  if (text.length <= maxChunkSize) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  const sentences = text.split(/([.!?]+)/);
+  
+  let currentChunk = '';
+  
+  for (let i = 0; i < sentences.length; i += 2) {
+    const sentence = sentences[i];
+    const punctuation = sentences[i + 1] || '';
+    const fullSentence = sentence + punctuation;
+    
+    if (currentChunk.length + fullSentence.length <= maxChunkSize) {
+      currentChunk += fullSentence;
+    } else {
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+      }
+      currentChunk = fullSentence;
+    }
+  }
+  
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  return chunks;
+}
+
+export async function synthesizeChunked(
+  text: string,
+  language: "de" | "en",
+  selectedVoices: { de: string; en: string },
+  options: ChunkedSynthesisOptions = {}
+): Promise<Float32Array[]> {
+  const { 
+    chunkSize = 200, 
+    onProgress, 
+    onChunkComplete, 
+    maxMemoryChunks = 10,
+    streamingMode = false 
+  } = options;
+  
+  console.log(`🎯 Starting chunked synthesis for ${text.length} characters`);
+  console.log(`💾 Memory settings: maxChunks=${maxMemoryChunks}, streaming=${streamingMode}`);
+  
+  const chunks = smartChunkText(text, chunkSize);
+  const audioChunks: Float32Array[] = [];
+  
+  console.log(`📦 Split into ${chunks.length} chunks:`, chunks.map(c => `"${c.substring(0, 30)}..."`));
+  
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    
+    onProgress?.({
+      currentChunk: i + 1,
+      totalChunks: chunks.length,
+      currentText: chunk,
+      isComplete: false
+    });
+    
+    console.log(`🎵 Synthesizing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 50)}..."`);
+    
+    try {
+      const audioData = await synthesize(chunk, language, selectedVoices);
+      
+      if (streamingMode) {
+        // In streaming mode, immediately process and potentially discard old chunks
+        onChunkComplete?.(i, audioData);
+        
+        // Keep only recent chunks in memory
+        if (audioChunks.length >= maxMemoryChunks) {
+          const removedChunk = audioChunks.shift();
+          console.log(`🗑️ Freed memory: removed chunk with ${removedChunk?.length || 0} samples`);
+        }
+      }
+      
+      audioChunks.push(audioData);
+      
+      console.log(`✅ Chunk ${i + 1} complete (${audioData.length} samples)`);
+      console.log(`💾 Memory usage: ${audioChunks.length} chunks in memory`);
+      
+    } catch (error) {
+      console.error(`❌ Failed to synthesize chunk ${i + 1}:`, error);
+      throw error;
+    }
+  }
+  
+  onProgress?.({
+    currentChunk: chunks.length,
+    totalChunks: chunks.length,
+    currentText: '',
+    isComplete: true
+  });
+  
+  console.log(`🎉 All ${chunks.length} chunks synthesized successfully!`);
+  console.log(`💾 Final memory usage: ${audioChunks.length} chunks`);
+  return audioChunks;
+}
+
+export function concatenateAudioBuffers(audioChunks: Float32Array[]): Float32Array {
+  if (audioChunks.length === 0) {
+    return new Float32Array(0);
+  }
+  
+  if (audioChunks.length === 1) {
+    return audioChunks[0];
+  }
+  
+  const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Float32Array(totalLength);
+  
+  let offset = 0;
+  for (const chunk of audioChunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  console.log(`🔗 Concatenated ${audioChunks.length} chunks into ${totalLength} samples`);
+  return result;
+}
+
+export function estimateMemoryUsage(audioChunks: Float32Array[]): {
+  totalSamples: number;
+  estimatedMB: number;
+  chunkCount: number;
+} {
+  const totalSamples = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const estimatedMB = (totalSamples * 4) / (1024 * 1024); // 4 bytes per float32
+  
+  return {
+    totalSamples,
+    estimatedMB: Math.round(estimatedMB * 100) / 100,
+    chunkCount: audioChunks.length
+  };
+}
+
+export function shouldUseStreamingMode(textLength: number, chunkSize: number = 200): boolean {
+  const estimatedChunks = Math.ceil(textLength / chunkSize);
+  const estimatedMemoryMB = (estimatedChunks * chunkSize * 4) / (1024 * 1024);
+  
+  // Use streaming for texts that would use more than 5MB of memory
+  return estimatedMemoryMB > 5;
 }

@@ -11,12 +11,27 @@ export function detectWordLanguages(
   text: string,
   existingWords?: DetectedWord[]
 ): DetectedWord[] {
-  // Create a map of existing words by their position for quick lookup
+  // Create a map of existing words by their text content for more robust lookup
   const existingWordMap = new Map<string, DetectedWord>();
   if (existingWords) {
     for (const word of existingWords) {
-      const key = `${word.startIndex}-${word.endIndex}-${word.text}`;
-      existingWordMap.set(key, word);
+      // Use only text as key since indices shift when text is edited
+      // For words that appear multiple times, we'll handle them specially
+      const key = word.text;
+      if (!existingWordMap.has(key)) {
+        existingWordMap.set(key, word);
+      }
+    }
+  }
+
+  // Also track manually assigned words by text to preserve across edits
+  const manualAssignments = new Map<string, "de" | "en" | "unknown">();
+  if (existingWords) {
+    for (const word of existingWords) {
+      // Only preserve assignments that seem manually set (not auto-detected patterns)
+      if (word.language !== "unknown") {
+        manualAssignments.set(word.text, word.language);
+      }
     }
   }
 
@@ -34,17 +49,25 @@ export function detectWordLanguages(
       const startIndex = globalIndex;
       const endIndex = globalIndex + token.length;
 
-      // Check if this word exists in our existing words map
-      const existingKey = `${startIndex}-${endIndex}-${token}`;
-      const existingWord = existingWordMap.get(existingKey);
+      // Check if this word has a manual assignment we should preserve
+      let language: "de" | "en" | "unknown" = "unknown";
 
-      // If we have an existing word assignment, use it, otherwise detect
-      let language: "de" | "en" | "unknown" = existingWord
-        ? existingWord.language
-        : "unknown";
+      // First check for manual assignments (highest priority)
+      if (manualAssignments.has(token)) {
+        language = manualAssignments.get(token)!;
+        console.log(
+          `🔒 Preserving manual assignment: "${token}" → ${language}`
+        );
+      }
+      // Then check existing word map as fallback
+      else if (existingWordMap.has(token)) {
+        const existingWord = existingWordMap.get(token)!;
+        language = existingWord.language;
+        console.log(`💾 Using existing assignment: "${token}" → ${language}`);
+      }
 
       // Only run detection if we don't have an existing assignment
-      if (!existingWord) {
+      if (language === "unknown") {
         if (/^\s+$/.test(token)) {
           // Whitespace token - keep as unknown, don't detect
           language = "unknown";
@@ -311,14 +334,23 @@ export function detectWordLanguages(
             const subEndIndex = globalIndex + subToken.length;
 
             // Check for existing sub-token assignment
-            const subExistingKey = `${subStartIndex}-${subEndIndex}-${subToken}`;
-            const subExistingWord = existingWordMap.get(subExistingKey);
-            let subLanguage: "de" | "en" | "unknown" = subExistingWord
-              ? subExistingWord.language
-              : "unknown";
+            let subLanguage: "de" | "en" | "unknown" = "unknown";
+
+            // First check for manual assignments (highest priority)
+            if (manualAssignments.has(subToken)) {
+              subLanguage = manualAssignments.get(subToken)!;
+            }
+            // Then check existing word map as fallback
+            else if (existingWordMap.has(subToken)) {
+              const subExistingWord = existingWordMap.get(subToken)!;
+              subLanguage = subExistingWord.language;
+            }
 
             // Only detect if we don't have an existing assignment
-            if (!subExistingWord && /^[a-zA-Z0-9äöüÄÖÜß.]+$/.test(subToken)) {
+            if (
+              subLanguage === "unknown" &&
+              /^[a-zA-Z0-9äöüÄÖÜß.]+$/.test(subToken)
+            ) {
               const cleanSubWord = subToken.toLowerCase();
 
               // Pure number (including decimals)
@@ -459,7 +491,7 @@ export function detectWordLanguages(
                       subLanguage = detected;
                     }
                   }
-                } catch (error) {
+                } catch {
                   // Detection failed, keep as unknown
                 }
               }
